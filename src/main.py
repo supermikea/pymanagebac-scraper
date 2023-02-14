@@ -26,7 +26,7 @@ login_button.perform()
 
 input("press enter when the page is loaded...")  # TODO remove this line with something automatic
 
-# today = driver.find_element(By.CLASS_NAME, "")
+# today = driver.find_element(By.CLASS_NAME, " ")
 days = driver.find_elements(By.CLASS_NAME, "day")
 # print(days)
 
