@@ -6,6 +6,10 @@ import re
 
 driver = webdriver.Firefox()
 
+# set maximum limit for waiting
+driver.implicitly_wait(5.0)
+
+
 subdomain = input("subdomain: ")
 email = input("school-mail: ")
 
@@ -22,13 +26,16 @@ login_button = ActionChains(driver=driver)
 login_button.click(on_element=submit_button)
 login_button.perform()
 
-# TODO check if login info is correct
+more_button = driver.find_elements(By.CLASS_NAME, "fc-more")
 
-input("press enter when the page is loaded...")  # TODO remove this line with something automatic
 
-# today = driver.find_element(By.CLASS_NAME, " ")
+# TODO need to test this
+if more_button:
+    fc_more = ActionChains(driver=driver)
+    fc_more.click(on_element=more_button)
+    fc_more.perform()
+
 days = driver.find_elements(By.CLASS_NAME, "day")
-# print(days)
 
 all_days = []
 
@@ -36,8 +43,6 @@ all_days = []
 for day in days:
     text = re.split("\n", day.text, flags=re.DOTALL)
     all_days.append(text)
-
-print(all_days)
 
 temp = []
 
