@@ -3,11 +3,11 @@ from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
-
+from selenium.webdriver.firefox.options import Options
 
 class mbapi:
 
-    def __init__(self, mail: str, password: str, impl_wait=5.0):
+    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=True):
 
         def get_subdomain(mail2):
             to_ret = []
@@ -28,7 +28,12 @@ class mbapi:
 
             return ret
 
-        self.driver = webdriver.Firefox()
+        self.options = None
+        if hide_window:
+            self.options = Options()
+            self.options.add_argument("--headless")
+
+        self.driver = webdriver.Firefox(options=self.options)
         self.mail = mail
         self.subdomain = get_subdomain(mail)
         self.password = password
@@ -84,6 +89,7 @@ class mbapi:
         classes_button.click(on_element=classes_button_elmnt)
         classes_button.perform()
 
+        # TODO this is broken
         classes = self.driver.find_element(By.XPATH, "//*[@id=\"action-show\"]")
         entries = classes.find_elements(By.TAG_NAME, "li")
 
@@ -91,20 +97,11 @@ class mbapi:
         to_ret = []
         sleep(1)
 
+        # get the right information out of everything
         for entry in entries:
             temp = re.split("\n", entry.text, flags=re.DOTALL)
-
-            if add_to_list or temp == "Classes":
-                if not add_to_list:
-                    add_to_list = True
-                    continue
-
-            if temp == "Join More Classes...":
-                break
-
             if len(temp) == 1:
                 continue
-
             to_ret.append(temp)
 
         to_ret = to_ret[0]
