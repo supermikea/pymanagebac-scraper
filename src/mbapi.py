@@ -9,6 +9,13 @@ from selenium.webdriver.common.by import By
 from time import sleep
 from selenium.webdriver.firefox.options import Options
 
+import bs4
+import lxml
+
+class classe:
+    def __init__(self, class_id: int, name: str):
+        self.class_id = class_id
+        self.name = name
 
 class grade:
     def __init__(self, number: int, task: object, date: str):
@@ -81,6 +88,9 @@ class mbapi:
         login_button.click(on_element=submit_button)
         login_button.perform()
 
+        # sometimes it'll fail so we wait a little bit
+        sleep(1)
+
     def get_schedule(self):
         more_button = self.driver.find_elements(By.CLASS_NAME, "fc-more")
 
@@ -113,212 +123,63 @@ class mbapi:
         return all_days
 
     def get_classes(self):
-        classes_button_elmnt = self.driver.find_element(By.XPATH, "/html/body/div[1]/ul/li[7]")
-        classes_button = ActionChains(driver=self.driver)
-        classes_button.click(on_element=classes_button_elmnt)
-        classes_button.perform()
+        self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes/my")
+        sleep(0.2)
+        source = self.driver.page_source
 
-        # TODO this is sometimes broken
-        classes = self.driver.find_element(By.XPATH, "//*[@id=\"action-show\"]")
-        entries = classes.find_elements(By.TAG_NAME, "li")
+        print("[DEBUG] now using bs4")
 
-        to_ret = []
-        sleep(1)
+        soup = bs4.BeautifulSoup(source, "html.parser")
+        html_classes = soup.find("div", {"id": "classes"})
+        h_classes = html_classes.find_all("div",
+                                          {"class": "fusion-card-item fusion-card-item-collapse ib-class-component"})
 
-        # get the right information out of everything
-        for entry in entries:
-            temp = re.split("\n", entry.text, flags=re.DOTALL)
-            if len(temp) == 1:
-                continue
-            to_ret.append(temp)
+        temp1 = []
+        temp_t = []
 
-        to_ret = to_ret[0]
+        # get the name out of the html
+        for i in h_classes:
+            temp = i.text.split(sep="\n")
+            for a in temp:
+                if a != "":
+                    if not len(a) in [1,2]:
+                        # filter some strings out of a
+                        if a not in ["Units","Tasks","Updates"]:
+                            temp_t.append(a)
 
-        to_ret.pop(0)
-        to_ret.pop(-1)
 
-        return to_ret
+        # get the ID of the html
+        for line in str(h_classes).splitlines():
+            if " id=" in line:
+                for i in line.split():
+                    if "id=" in i:
+                        for a in i.split(sep="\""):
+                            if "ib" in a:
+                                for b in a.split(sep="_"):
+                                    if any([x in b for x in "1234567890"]): temp1.append(b)
+
+        temp5 = []
+
+        # print(len(temp_t))
+        # print(len(temp1))
+
+        for i in range(0, (len(temp1))):
+            item = classe(class_id=int(temp1[i]), name=temp_t[i])
+            temp5.append(item)
+
+        return temp5
 
     def home(self):
-        invoked = True
-        count = 0
-
-        # a Timeout function using threads
-        while True:
-            if invoked:
-                print("[DEBUG] CREATING THREAD")
-                t1 = threading.Thread(target=self.driver.get, args=(f"https://{self.subdomain}.managebac.com/student",))
-                t1.start()
-                t1.join(timeout=5.0)
-                print("[DEBUG] THREAD JOINED")
-                if t1.is_alive():
-                    print(f"[DEBUG] THREAD STILL ALIVE: Count = {count}")
-                    if count >= 3:
-                        print("[DEBUG] count is 3 and the thread is still alive...\n[DEBUG] Deciding to just return and pray...")
-                        return
-                    count += 1
-                else:
-                    break
+        self.driver.get(f"https://{self.subdomain}.managebac.com/student")
 
     def get_grades(self):
-
-        to_ret_grades = []
-
-        classes_button_elmnt = self.driver.find_element(By.XPATH, "/html/body/div[1]/ul/li[7]")
-        classes_button = ActionChains(driver=self.driver)
-        classes_button.click(on_element=classes_button_elmnt)
-        classes_button.perform()
-
-        # TODO this may be broken
-        classes = self.driver.find_element(By.XPATH, "//*[@id=\"action-show\"]")
-        entries = classes.find_elements(By.TAG_NAME, "li")
-
-        to_ret = []
-        sleep(0.8)
-
-        # get the right information out of everything
-        for entry in entries:
-            temp = re.split("\n", entry.text, flags=re.DOTALL)
-            if len(temp) == 1:
-                continue
-            to_ret.append(temp)
-
-        to_ret = to_ret[0]
-
-        to_ret.pop(0)
-        to_ret.pop(-1)
-
-        final = []
-
-        for entry in entries:
-            for i in to_ret:
-                if entry.text == i:
-                    final.append(entry)
-
-        # for i in final:
-        #     print(i.text)
-
-        classes_objs = final
-
-        # print(classes_objs)
-
-        index = 0
-
-        for i in classes_objs:
-            index += 1
-            try:
-                action = ActionChains(driver=self.driver)
-                action.click(on_element=i)
-                action.perform()
-                # sleep(1)
-            except Exception as e:
-                if index == 1:
-                    raise e
-                self.home()
-                sleep(0.2)
-                action = ActionChains(driver=self.driver)
-                action.click(on_element=self.driver.find_element(By.XPATH, "/html/body/div[1]/ul/li[7]"))
-                action.perform()
-
-                classes = self.driver.find_element(By.XPATH, "//*[@id=\"action-show\"]")
-                entries = classes.find_elements(By.TAG_NAME, "li")
-
-                to_ret = []
-                sleep(0.8)
-
-                # get the right information out of everything
-                for entry in entries:
-                    # print(f"[DEBUG] RAW CLASSES ITEMS = {entry.text}")
-                    temp = re.split("\n", entry.text, flags=re.DOTALL)
-                    if len(temp) == 1:
-                        continue
-                    to_ret.append(temp)
-
-                to_ret = to_ret[0]
-
-                to_ret.pop(0)
-                to_ret.pop(-1)
-
-                final = []
-
-                for entry in entries:
-                    for i in to_ret:
-                        # print(f"[DEBUG] ITEM IN to_ret = {i}")
-                        if entry.text == i:
-                            final.append(entry)
-
-                # for i in final:
-                #     print(i.text)
-
-                classes_objs = final
-
-                try:
-                    i = classes_objs[index-1]
-                except IndexError as e:
-                    print(e)
-                    print(f"[DEBUG] to_ret = {to_ret}")
-                    self.quit()
-
-                action = ActionChains(driver=self.driver)
-                action.click(on_element=i)
-                action.perform()
-
-            tasks_unit = self.driver.find_element(By.XPATH, "/html/body/main/div[2]/div[2]/div[2]/ul/li[1]/a")
-
-            action = ActionChains(driver=self.driver)
-            action.click(on_element=tasks_unit)
-            action.perform()
-            # sleep(1)
-
-            try:
-                all_tasks = self.driver.find_element(By.XPATH, "/html/body/main/div[2]/div[3]/div[2]/div[2]/div/p[2]/a")
-            except selenium.common.exceptions.NoSuchElementException:
-                all_tasks = self.driver.find_element(By.XPATH, "/html/body/main/div[2]/div[3]/div[2]/div[2]/div")
-            action = ActionChains(driver=self.driver)
-            action.click(on_element=all_tasks)
-            action.perform()
-            # sleep(1)
-
-            terms = self.driver.find_element(By.CLASS_NAME, "selection")
-
-            action = ActionChains(driver=self.driver)
-            action.click(on_element=terms)
-            action.perform()
-            # sleep(1)
-
-            for i in range(4):
-
-                try:
-                    tasks = self.driver.find_element(By.XPATH, "/html/body/main/div[2]/div[3]/div[4]")
-                    grades = tasks.find_elements(By.TAG_NAME, "div")
-                    for grade in grades:
-                        try:
-                            if len(grade.text) > 3:
-                                continue
-                            to_ret_grades.append(grade.text)
-                        except selenium.common.exceptions.StaleElementReferenceException:
-                            pass
-
-                except selenium.common.exceptions.NoSuchElementException:
-                    pass
+        # first we must get the classes
+        self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes")
+        sleep(0.2)
+        classe = self.driver.find_element(By.ID, "classes")
 
 
-                terms1 = self.driver.find_element(By.XPATH, "/html/body/main/div[2]/div[3]/div[2]/div/span")
 
-                action = ActionChains(driver=self.driver)
-                action.click(terms1)
-                action.perform()
-
-                terms = self.driver.find_element(By.XPATH, "/html/body/span/span/span[2]/ul/li/ul")
-                terms = terms.find_elements(By.TAG_NAME, "li")
-
-                action = ActionChains(driver=self.driver)
-                action.click(terms[i])
-                action.perform()
-                sleep(0.2)
-
-        # and finally we're done
-        return to_ret_grades
 
     def quit(self):
         self.driver.quit()
