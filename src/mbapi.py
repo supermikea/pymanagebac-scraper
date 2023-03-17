@@ -1,34 +1,38 @@
 import re
-import time
-import threading
 
-import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
 from selenium.webdriver.firefox.options import Options
-
 import bs4
-import lxml
+
 
 class classe:
-    def __init__(self, class_id: int, name: str):
+    def __init__(self, class_id: int, name: str, grade: list):
+        """
+        :type class_id: int
+        :type name: str
+        :type grade: list
+        """
+
         self.class_id = class_id
         self.name = name
+        self.grades = grade
 
-class grade:
-    def __init__(self, number: int, task: object, date: str):
-        """
-        :type number: int
-        :type task: object
-        :type date: str
-        """
-        self.number = number
-        self.task = task
-        self.date = date
 
-class task:
+class a_grade:
+    def __init__(self, number: str, max_number: str, name: str):
+        """
+        :type number: str
+        :type name: str
+        """
+        self.grade = number
+        self.max_grade = max_number
+        self.name = name
+
+
+class a_task:
     def __init__(self, date, title: str, description: str):
         """
 
@@ -40,9 +44,10 @@ class task:
         self.description = description
         self.name = title
 
+
 class mbapi:
 
-    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=True, logging_level=None):
+    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=False, logging_level=None):
 
         def get_subdomain(mail2):
             to_ret = []
@@ -73,7 +78,6 @@ class mbapi:
         self.subdomain = get_subdomain(mail)
         self.password = password
         self.driver.implicitly_wait(impl_wait)
-
 
     def login(self):
         # login
@@ -134,6 +138,8 @@ class mbapi:
         h_classes = html_classes.find_all("div",
                                           {"class": "fusion-card-item fusion-card-item-collapse ib-class-component"})
 
+        print("[DEBUG] now using own implementation")
+
         temp1 = []
         temp_t = []
 
@@ -142,11 +148,10 @@ class mbapi:
             temp = i.text.split(sep="\n")
             for a in temp:
                 if a != "":
-                    if not len(a) in [1,2]:
+                    if not len(a) in [1, 2]:
                         # filter some strings out of a
-                        if a not in ["Units","Tasks","Updates"]:
+                        if a not in ["Units", "Tasks", "Updates"]:
                             temp_t.append(a)
-
 
         # get the ID of the html
         for line in str(h_classes).splitlines():
@@ -164,7 +169,7 @@ class mbapi:
         # print(len(temp1))
 
         for i in range(0, (len(temp1))):
-            item = classe(class_id=int(temp1[i]), name=temp_t[i])
+            item = classe(class_id=int(temp1[i]), name=temp_t[i], grade=[])
             temp5.append(item)
 
         return temp5
@@ -172,16 +177,71 @@ class mbapi:
     def home(self):
         self.driver.get(f"https://{self.subdomain}.managebac.com/student")
 
-    def get_grades(self):
-        # first we must get the classes
-        self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes")
+    def get_grades(self, target: classe):
+
+        self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks")
         sleep(0.2)
-        classe = self.driver.find_element(By.ID, "classes")
+        source = self.driver.page_source
 
+        print("[DEBUG] now using own implementation")
 
+        temp_names = []
+        temp_grades = []
+        temp_max_grades = []
 
+        source = source.splitlines()
+        for item in source:
+            # get the name out of the task
+            if f"href=\"/student/classes/{target.class_id}/core_tasks" in item:
+                if "<div class=\"indicator program-label m" in item:
+                    continue
+                parts = item.split(sep=">")
+                parts.pop(0)
+                parts.pop(-1)
+                temp_names.append(parts[0][:-3])
+
+            # get the grade out of the task
+            if "<div class=\"label label-score\">" in item:
+                parts = item.split(sep=">")
+                parts.pop(0)
+                parts.pop(-1)
+                temp_grades.append(parts[0][:-5])
+
+            # get the max_grade out of the task
+            if "<div class=\"label label-points\">" in item:
+                parts = item.split(sep=">")
+                parts.pop(0)
+                parts.pop(-1)
+                temp_max_grades.append(parts[0][:-5])
+
+            # if the grade is N/A
+            if "<div class=\"label label-not-applicable\">" in item:
+                parts = item.split(sep=">")
+                parts.pop(0)
+                parts.pop(-1)
+                temp = (parts[0][:-5])
+                temp_max_grades.append(temp)
+                temp_grades.append(temp)
+
+        temp_grade_obj = []
+
+        count = 0
+
+        print(len(temp_grades))
+        print(len(temp_max_grades))
+        print(len(temp_names))
+
+        print(temp_grades)
+        print(temp_max_grades)
+        print(temp_names)
+
+        for i in range(0, len(temp_grades)):
+            grade_item = a_grade(number=temp_grades[i], max_number=temp_max_grades[i], name=temp_names[i])
+            temp_grade_obj.append(grade_item)
+            count += 1
+            print(count)
+        item = classe(class_id=target.class_id, name=target.name, grade=temp_grade_obj)
+        return item
 
     def quit(self):
         self.driver.quit()
-
-
