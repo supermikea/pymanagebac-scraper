@@ -1,17 +1,21 @@
-# NOTE install it or put it in the same directory as the example.py
-import mbapi
+from mbapi import mbapi
 
-# first we make a mbapi object and insert all required information (optional: implicit wait of selenium)
-mbapi = mbapi(mail="mail", password="password")
-
-# first we login
+mbapi = mbapi("YOUR_MAILl", "YOUR_PASSWORD", hide_window=True)
 mbapi.login()
+print("Successfully logged in!")
 
-# we get the schedule in a lists nested in a list
-print(mbapi.get_schedule())
+classes = mbapi.get_classes()
 
-# we get the classes in a list
-print(mbapi.get_classes())
+temp = []
 
-# we are done with gathering information so we quit
+for i in range(0, len(classes)):
+    print(classes[i].name)
+    temp.append(mbapi.get_grades(target=classes[i]))
+
+for item in temp:
+    print(f"\n\nclass: {item.name}\n\n")
+    for i in item.grades:
+        print(f"Name Assignment: {i.name}")
+        print(f"Your Grade: {i.grade} / {i.max_grade}\n")
+
 mbapi.quit()
