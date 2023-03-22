@@ -1,10 +1,14 @@
 import re
+import requests as req
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
 from selenium.webdriver.firefox.options import Options
+import logging
+from logging import log
 import bs4
 
 
@@ -47,7 +51,7 @@ class a_task:
 
 class mbapi:
 
-    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=False, logging_level=None):
+    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=True, subdomain="" ,logging_level=None):
 
         def get_subdomain(mail2):
             to_ret = []
@@ -75,9 +79,13 @@ class mbapi:
 
         self.driver = webdriver.Firefox(options=self.options)
         self.mail = mail
-        self.subdomain = get_subdomain(mail)
+        if subdomain:
+            self.subdomain = subdomain
+        else:
+            self.subdomain = get_subdomain(mail)
         self.password = password
         self.driver.implicitly_wait(impl_wait)
+        self.session_cookie = None
 
     def login(self):
         # login
@@ -91,9 +99,18 @@ class mbapi:
         login_button = ActionChains(driver=self.driver)
         login_button.click(on_element=submit_button)
         login_button.perform()
-
         # sometimes it'll fail so we wait a little bit
         sleep(1)
+
+        # use session cookies for increased speed
+        cookie = self.driver.get_cookie(name="_managebac_session")
+        cookie = {"_managebac_session": cookie.get("value"), "hide_osc_announcement_modal": "true"}
+        result = req.get(f"https://{self.subdomain}.managebac.com/student/", cookies=cookie)
+
+        if str(result) == "<Response [200]>":
+            self.session_cookie = cookie
+        else:
+            print("[DEBUG] couldn't get session cookie for some reason... [CONTINUING]")
 
     def get_schedule(self):
         more_button = self.driver.find_elements(By.CLASS_NAME, "fc-more")
@@ -165,7 +182,8 @@ class mbapi:
                         for a in i.split(sep="\""):
                             if "ib" in a:
                                 for b in a.split(sep="_"):
-                                    if any([x in b for x in "1234567890"]): temp1.append(b)
+                                    if any([x in b for x in "1234567890"]):
+                                        temp1.append(b)
 
         temp5 = []
         count = target + 1
@@ -180,20 +198,62 @@ class mbapi:
         self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes/my?page={count}")
         sleep(0.2)
         source = self.driver.page_source
-        if not "No classes found" in source:
+        if "No classes found" not in source:
             temp = self.get_classes(target=count)
             for i in temp:
                 temp5.append(i)
 
         return temp5
 
-    def home(self):
-        self.driver.get(f"https://{self.subdomain}.managebac.com/student")
-
-    def get_grades(self, target: classe):
+    def get_grades(self, target: classe, term: int = 0):
 
         self.driver.get(f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks")
-        sleep(0.2)
+        sleep(0.1)
+        if term:
+            url = self.driver.current_url
+            url_id = int(url.split(sep="=")[-1])
+            current_month = datetime.now().month
+            if term == 1:
+                if 1 <= current_month <= 4:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id-1}")
+                    sleep(0.1)
+                elif current_month >= 9:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id}")
+                    sleep(0.1)
+                else:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id-2}")
+                    sleep(0.1)
+            elif term == 2:
+                if 1 <= current_month <= 4:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id - 0}")
+                    sleep(0.1)
+                elif current_month >= 9:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id + 1}")
+                    sleep(0.1)
+                else:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id - 1}")
+                    sleep(0.1)
+            elif term == 3:
+                if 1 <= current_month <= 4:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id + 1}")
+                    sleep(0.1)
+                elif current_month >= 9:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id + 2}")
+                    sleep(0.1)
+                else:
+                    self.driver.get(
+                        f"https://{self.subdomain}.managebac.com/student/classes/{target.class_id}/core_tasks?term={url_id - 0}")
+                    sleep(0.1)
+            else:
+                raise TypeError("the argument term must be 1, 2, 3 or 4")
         source = self.driver.page_source
 
         # print("[DEBUG] now using own implementation")
@@ -203,7 +263,6 @@ class mbapi:
         temp_max_grades = []
 
         criterion = False
-        j_added_crit = False
 
         source = source.splitlines()
         for item in source:
@@ -252,7 +311,6 @@ class mbapi:
 
                 temp_grades.append(part)
                 temp_max_grades.append(part)
-                j_added_crit = True
 
         # print("[DEBUG] done getting all the grades using my own implementation!")
         # print("[DEBUG] now fixing potential errors...")
@@ -274,7 +332,7 @@ class mbapi:
                 value = temp_grades[count + 1]
                 to_insert = {key: value}
                 try:
-                    print(new_grades)
+                    # print(new_grades)
                     if isinstance(new_grades[-1], dict):
 
                         new_grades[-1].update(to_insert)
@@ -321,7 +379,7 @@ class mbapi:
 
         temp_grade_obj = []
 
-        count = 0
+        # count = 0
 
         # print(len(temp_grades))
         # print(len(temp_max_grades))
@@ -347,3 +405,7 @@ class mbapi:
 
     def quit(self):
         self.driver.quit()
+
+
+if __name__ == "__main__":
+    print("this is something you should import, not run directly")
