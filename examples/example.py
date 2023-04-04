@@ -1,20 +1,20 @@
 from pymanagebac import pymanagebac as mb
 
-# we make the mbapi object, it should automatically find your subdomain if not you can add the subdomain parameter
+# we make the pymanagebac object, it should automatically find your subdomain if not you can add the subdomain parameter
 # automatically runs in headless if you want to see the window add hidewindow=True as argument
-mbapi = mb("EMAIL", "PASSWORD")
+mbscr = mb("EMAIL", "PASSWORD")
 
 
 print("logging in...")
 
 # be sure to run this instantly because well you first need to log in
-mbapi.login()
+mbscr.login()
 print("Successfully logged in!")
 
 print("getting classes...")
 # we get all the classes that the student has. this is used to identify the ID of the class and use that as target for
 # the get_grades method
-classes = mbapi.get_classes()
+classes = mbscr.get_classes()
 print("got classes!")
 
 temp = []
@@ -23,7 +23,7 @@ print("getting grades...")
 
 # we get all the grades for all the classes of the student using our output of the get_classes method
 for i in range(0, len(classes)):
-    temp.append(mbapi.get_grades(target=classes[i]))
+    temp.append(mbscr.get_grades(target=classes[i]))
 
 print("got grades! parsing output...")
 
@@ -51,4 +51,4 @@ for item in temp:
             print(f"Your Grade: {grade} out of {max_grade}")
 
 # you NEED to call this function for the webdriver to quit
-mbapi.quit()
+mbscr.quit()
