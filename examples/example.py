@@ -1,4 +1,4 @@
-from mbapi import mbapi as mb
+from pymanagebac import pymanagebac as mb
 
 # we make the mbapi object, it should automatically find your subdomain if not you can add the subdomain parameter
 # automatically runs in headless if you want to see the window add hidewindow=True as argument

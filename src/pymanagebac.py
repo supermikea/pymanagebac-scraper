@@ -7,8 +7,6 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
 from selenium.webdriver.firefox.options import Options
-import logging
-from logging import log
 import bs4
 
 
@@ -49,9 +47,9 @@ class a_task:
         self.name = title
 
 
-class mbapi:
+class pymanagebac:
 
-    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=True, subdomain="" ,logging_level=None):
+    def __init__(self, mail: str, password: str, impl_wait=5., hide_window=True, subdomain="" , logging_level=None):
 
         def get_subdomain(mail2):
             to_ret = []
@@ -353,6 +351,7 @@ class mbapi:
             count += 1
 
         count = 0
+
         # OPTIMIZATION NEEDED
         for item in temp_max_grades:
             if item in "ABCD":
