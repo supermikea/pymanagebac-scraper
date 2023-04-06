@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 DESCRIPTION = 'A python module for interacting with Managebac using selenium.'
 LONG_DESCRIPTION = """
 pymanagebac is a python module for interacting with Managebac using selenium.

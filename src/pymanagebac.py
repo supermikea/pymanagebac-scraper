@@ -297,7 +297,6 @@ class pymanagebac:
                 temp_max_grades.append(temp)
                 temp_grades.append(temp)
 
-            # TODO if this happens, add a dictionary for easier access
             # check if grade has criterion (basically always)
             if "<div class=\"cell criterion-grade\">" in item or criterion:
                 if not criterion:
