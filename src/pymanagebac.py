@@ -9,6 +9,7 @@ from time import sleep
 from selenium.webdriver.firefox.options import Options
 import bs4
 
+# test
 
 class classe:
     def __init__(self, class_id: int, name: str, grade: list):
