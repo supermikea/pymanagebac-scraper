@@ -1,0 +1,4 @@
+pymanagebac~=0.0.3
+requests~=2.31.0
+setuptools~=65.5.1
+selenium~=4.15.2
